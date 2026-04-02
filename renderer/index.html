@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Todo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ── Titlebar ─────────────────────────────────────────── -->
+  <div id="titlebar">
+    <div id="titlebar-left">
+      <span id="titlebar-month-label"></span>
+      <span id="titlebar-habits-label" class="hidden">Habits</span>
+    </div>
+
+    <div id="tab-bar">
+      <button class="tab-btn tab-btn--active" data-tab="calendar">Calendar</button>
+      <button class="tab-btn" data-tab="habits">Habits</button>
+    </div>
+
+    <div id="titlebar-right">
+      <div id="calendar-nav">
+        <button id="btn-prev" aria-label="Previous month">&#8249;</button>
+        <button id="btn-today">Today</button>
+        <button id="btn-next" aria-label="Next month">&#8250;</button>
+      </div>
+      <button id="btn-add-habit" class="hidden">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="margin-right:5px">
+          <path d="M5.5 1V10M1 5.5H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        New Habit
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Calendar View ────────────────────────────────────── -->
+  <div id="view-calendar">
+    <div id="weekday-header">
+      <div class="weekday-label">Mon</div>
+      <div class="weekday-label">Tue</div>
+      <div class="weekday-label">Wed</div>
+      <div class="weekday-label">Thu</div>
+      <div class="weekday-label">Fri</div>
+      <div class="weekday-label">Sat</div>
+      <div class="weekday-label">Sun</div>
+    </div>
+    <div id="calendar-grid"></div>
+  </div>
+
+  <!-- ── Habits View ──────────────────────────────────────── -->
+  <div id="view-habits" class="view-hidden">
+    <div id="habits-summary"></div>
+    <div id="habits-list"></div>
+    <div id="habits-empty" class="hidden">
+      <p>No habits yet.</p>
+      <p>Click <strong>New Habit</strong> to get started.</p>
+    </div>
+  </div>
+
+  <!-- ── Day Panel (fixed right drawer) ───────────────────── -->
+  <div id="task-panel">
+    <div id="task-panel-header">
+      <span id="task-panel-date"></span>
+      <button id="task-panel-close" aria-label="Close panel">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="panel-scroll">
+      <!-- Tasks section -->
+      <div class="panel-section-title">Tasks</div>
+      <div id="task-list"></div>
+      <form id="task-add-form">
+        <input id="task-input" type="text" placeholder="Add a task…" autocomplete="off" maxlength="200">
+        <button type="submit" aria-label="Add task">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1V13M1 7H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </form>
+
+      <!-- Habits section -->
+      <div class="panel-section-divider"></div>
+      <div class="panel-section-title">Habits</div>
+      <div id="habit-day-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Add Habit Modal ──────────────────────────────────── -->
+  <div id="habit-modal" class="hidden">
+    <div id="habit-modal-backdrop"></div>
+    <div id="habit-modal-content">
+      <h3>New Habit</h3>
+      <input id="habit-name-input" type="text" placeholder="e.g. Morning run, Read 20 mins…" maxlength="60" autocomplete="off">
+      <div id="habit-color-picker"></div>
+      <div class="modal-actions">
+        <button id="btn-habit-cancel">Cancel</button>
+        <button id="btn-habit-save">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
