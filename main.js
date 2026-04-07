@@ -14,7 +14,7 @@ function createWindow() {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
-    backgroundColor: '#F5F9FF',
+    backgroundColor: '#000400',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -28,7 +28,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   if (app.dock) {
-    app.dock.setIcon(path.join(__dirname, 'renderer', 'icons', 'extension_icon@1024px.png'))
+    app.dock.setIcon(path.join(__dirname, 'renderer', 'icons', 'TodoIcon_padded.png'))
   }
   createWindow()
 })

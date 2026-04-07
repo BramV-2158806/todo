@@ -28,6 +28,7 @@ let selectedHabitColor = HABIT_COLORS[0].value
 // Init
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  startMatrixRain()
   await Promise.all([
     loadAndRenderCalendar(),
     loadHabits(),
@@ -658,4 +659,59 @@ function trashSVG() {
   return `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
     <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M4.5 3.5l.5 6.5h3l.5-6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`
+}
+
+// ============================================================
+// Matrix Rain
+// ============================================================
+function startMatrixRain() {
+  const canvas = document.getElementById('matrix-canvas')
+  const ctx = canvas.getContext('2d')
+  const fontSize = 14
+  let columns, drops
+
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン' +
+                '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*<>{}[]/\\'
+
+  function resize() {
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const newColumns = Math.floor(canvas.width / fontSize)
+    if (!drops) {
+      drops = new Array(newColumns).fill(0).map(() => Math.floor(Math.random() * -80))
+    } else {
+      while (drops.length < newColumns) drops.push(Math.floor(Math.random() * -80))
+      drops.length = newColumns
+    }
+    columns = newColumns
+  }
+  resize()
+  window.addEventListener('resize', resize)
+
+  function draw() {
+    // Fade previous frame — creates the glowing trail
+    ctx.fillStyle = 'rgba(0, 4, 0, 0.045)'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    for (let i = 0; i < columns; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)]
+      const x = i * fontSize
+      const y = drops[i] * fontSize
+
+      if (y > 0 && y < canvas.height + fontSize) {
+        // Bright white-green head of each column
+        ctx.fillStyle = '#CCFFCC'
+        ctx.font = `bold ${fontSize}px monospace`
+        ctx.fillText(char, x, y)
+      }
+
+      // Reset column when it goes past the screen
+      if (y > canvas.height && Math.random() > 0.975) {
+        drops[i] = Math.floor(Math.random() * -40)
+      }
+      drops[i]++
+    }
+  }
+
+  setInterval(draw, 40)
 }

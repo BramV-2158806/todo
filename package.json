@@ -20,7 +20,8 @@
     "mac": {
       "target": "dir",
       "category": "public.app-category.productivity",
-      "icon": "renderer/icons/extension_icon@1024px.png"
+      "icon": "renderer/icons/TodoIcon.iconset",
+      "identity": null
     },
     "directories": {
       "output": "dist"
