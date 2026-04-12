@@ -93,6 +93,20 @@
     </div>
   </div>
 
+  <!-- ── Day Launch Popup ─────────────────────────────────── -->
+  <div id="day-launch-modal" class="hidden">
+    <div id="day-launch-backdrop"></div>
+    <div id="day-launch-content">
+      <p id="day-launch-title">Yesterday's Habits</p>
+      <p id="day-launch-subtitle"></p>
+      <div id="day-launch-habits"></div>
+      <div class="modal-actions">
+        <button id="btn-day-launch-skip">Skip</button>
+        <button id="btn-day-launch-open">Open Yesterday</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Add Habit Modal ──────────────────────────────────── -->
   <div id="habit-modal" class="hidden">
     <div id="habit-modal-backdrop"></div>
@@ -107,6 +121,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

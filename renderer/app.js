@@ -1,3 +1,6 @@
+import { loadAndRenderCalendar, renderCalendarGrid, bindNavigation } from './calendar.js'
+import { state, toDateKey } from './state.js'
+
 // ============================================================
 // Constants
 // ============================================================
@@ -13,11 +16,6 @@ const HABIT_COLORS = [
 // ============================================================
 // State
 // ============================================================
-const today = new Date()
-let currentYear  = today.getFullYear()
-let currentMonth = today.getMonth() + 1
-let monthData    = {}
-let selectedDay  = null
 let currentTab   = 'calendar'
 
 let habits            = []   // [{ id, name, color, createdAt }]
@@ -37,128 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindTaskPanel()
   bindTabs()
   bindHabitModal()
+  bindDayLaunchModal()
+  await checkDayLaunch()
 })
-
-// ============================================================
-// Calendar
-// ============================================================
-async function loadAndRenderCalendar() {
-  monthData = await window.todoAPI.getMonth(currentYear, currentMonth)
-  renderTitlebarLabel()
-  renderCalendarGrid()
-}
-
-function renderTitlebarLabel() {
-  const label = document.getElementById('titlebar-month-label')
-  const d = new Date(currentYear, currentMonth - 1, 1)
-  label.textContent = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-}
-
-function bindNavigation() {
-  document.getElementById('btn-prev').addEventListener('click', async () => {
-    currentMonth--
-    if (currentMonth < 1) { currentMonth = 12; currentYear-- }
-    selectedDay = null; closePanelUI()
-    await loadAndRenderCalendar()
-  })
-  document.getElementById('btn-next').addEventListener('click', async () => {
-    currentMonth++
-    if (currentMonth > 12) { currentMonth = 1; currentYear++ }
-    selectedDay = null; closePanelUI()
-    await loadAndRenderCalendar()
-  })
-  document.getElementById('btn-today').addEventListener('click', async () => {
-    const t = new Date()
-    currentYear = t.getFullYear(); currentMonth = t.getMonth() + 1
-    selectedDay = null; closePanelUI()
-    await loadAndRenderCalendar()
-  })
-}
-
-function renderCalendarGrid() {
-  const grid = document.getElementById('calendar-grid')
-  grid.innerHTML = ''
-  const weeks = buildWeekMatrix(currentYear, currentMonth)
-  for (const week of weeks) {
-    const row = document.createElement('div')
-    row.className = 'calendar-row'
-    for (const date of week) row.appendChild(buildDayCell(date))
-    grid.appendChild(row)
-  }
-  grid.classList.toggle('panel-open', !!selectedDay)
-}
-
-function buildWeekMatrix(year, month) {
-  const firstDay = new Date(year, month - 1, 1)
-  const lastDay  = new Date(year, month, 0)
-  const startOffset = (firstDay.getDay() + 6) % 7
-  const weeks = []; let week = []
-  for (let i = 0; i < startOffset; i++) week.push(null)
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    week.push(new Date(year, month - 1, d))
-    if (week.length === 7) { weeks.push(week); week = [] }
-  }
-  if (week.length > 0) { while (week.length < 7) week.push(null); weeks.push(week) }
-  return weeks
-}
-
-function buildDayCell(date) {
-  const cell = document.createElement('div')
-  if (!date) { cell.className = 'day-cell day-cell--empty'; return cell }
-
-  const dateKey  = toDateKey(date)
-  const tasks    = monthData[dateKey] || []
-  const isToday  = dateKey === toDateKey(today)
-  const isSel    = dateKey === selectedDay
-
-  cell.className = ['day-cell', isToday ? 'day-cell--today' : '', isSel ? 'day-cell--selected' : ''].filter(Boolean).join(' ')
-  cell.dataset.dateKey = dateKey
-
-  // Day number
-  const num = document.createElement('div')
-  num.className = 'day-number'
-  num.textContent = date.getDate()
-  cell.appendChild(num)
-
-  // Progress bar (tasks only)
-  if (tasks.length > 0) cell.appendChild(buildProgressBar(tasks))
-
-  // Task pills
-  if (tasks.length > 0) {
-    const ul = document.createElement('ul')
-    ul.className = 'day-task-list'
-    for (const t of tasks) {
-      const li = document.createElement('li')
-      li.className = t.completed ? 'day-task day-task--done' : 'day-task'
-      li.textContent = t.text
-      ul.appendChild(li)
-    }
-    cell.appendChild(ul)
-  }
-
-  cell.addEventListener('click', () => {
-    if (selectedDay === dateKey) closeTaskPanel()
-    else openTaskPanel(dateKey)
-  })
-  return cell
-}
-
-function buildProgressBar(tasks) {
-  const total = tasks.length
-  const done  = tasks.filter(t => t.completed).length
-  const pct   = total === 0 ? 0 : Math.round((done / total) * 100)
-  const wrap  = document.createElement('div')
-  wrap.className = 'progress-bar'
-  wrap.setAttribute('role', 'progressbar')
-  wrap.setAttribute('aria-valuenow', pct)
-  wrap.setAttribute('aria-valuemin', 0)
-  wrap.setAttribute('aria-valuemax', 100)
-  const fill = document.createElement('div')
-  fill.className = 'progress-bar__fill'
-  fill.style.width = `${pct}%`
-  wrap.appendChild(fill)
-  return wrap
-}
 
 // ============================================================
 // Day Panel — Tasks
@@ -169,17 +48,17 @@ function bindTaskPanel() {
     e.preventDefault()
     const input = document.getElementById('task-input')
     const text  = input.value.trim()
-    if (!text || !selectedDay) return
+    if (!text || !state.selectedDay) return
     input.value = ''
-    await handleAddTask(selectedDay, text)
+    await handleAddTask(state.selectedDay, text)
   })
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && selectedDay) closeTaskPanel()
+    if (e.key === 'Escape' && state.selectedDay) closeTaskPanel()
   })
 }
 
-function openTaskPanel(dateKey) {
-  selectedDay = dateKey
+export function openTaskPanel(dateKey) {
+  state.selectedDay = dateKey
   const d = new Date(dateKey + 'T12:00:00')
   document.getElementById('task-panel-date').textContent =
     d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -191,13 +70,13 @@ function openTaskPanel(dateKey) {
   setTimeout(() => document.getElementById('task-input').focus(), 250)
 }
 
-function closeTaskPanel() {
-  selectedDay = null
+export function closeTaskPanel() {
+  state.selectedDay = null
   closePanelUI()
   renderCalendarGrid()
 }
 
-function closePanelUI() {
+export function closePanelUI() {
   document.getElementById('task-panel').classList.remove('visible')
   document.getElementById('calendar-grid').classList.remove('panel-open')
 }
@@ -205,7 +84,7 @@ function closePanelUI() {
 function renderTaskPanelList(dateKey) {
   const el = document.getElementById('task-list')
   el.innerHTML = ''
-  for (const task of (monthData[dateKey] || [])) {
+  for (const task of (state.monthData[dateKey] || [])) {
     el.appendChild(buildTaskItem(dateKey, task))
   }
 }
@@ -237,16 +116,16 @@ function buildTaskItem(dateKey, task) {
 
 async function handleAddTask(dateKey, text) {
   const t = await window.todoAPI.addTask(dateKey, text)
-  if (!monthData[dateKey]) monthData[dateKey] = []
-  monthData[dateKey].push(t)
+  if (!state.monthData[dateKey]) state.monthData[dateKey] = []
+  state.monthData[dateKey].push(t)
   renderTaskPanelList(dateKey)
   renderCalendarGrid()
 }
 
 async function handleToggleTask(dateKey, taskId) {
   const updated = await window.todoAPI.toggleTask(dateKey, taskId)
-  if (updated && monthData[dateKey]) {
-    const t = monthData[dateKey].find(t => t.id === taskId)
+  if (updated && state.monthData[dateKey]) {
+    const t = state.monthData[dateKey].find(t => t.id === taskId)
     if (t) t.completed = updated.completed
   }
   renderTaskPanelList(dateKey)
@@ -255,9 +134,9 @@ async function handleToggleTask(dateKey, taskId) {
 
 async function handleDeleteTask(dateKey, taskId) {
   await window.todoAPI.deleteTask(dateKey, taskId)
-  if (monthData[dateKey]) {
-    monthData[dateKey] = monthData[dateKey].filter(t => t.id !== taskId)
-    if (monthData[dateKey].length === 0) delete monthData[dateKey]
+  if (state.monthData[dateKey]) {
+    state.monthData[dateKey] = state.monthData[dateKey].filter(t => t.id !== taskId)
+    if (state.monthData[dateKey].length === 0) delete state.monthData[dateKey]
   }
   renderTaskPanelList(dateKey)
   renderCalendarGrid()
@@ -334,7 +213,7 @@ function switchTab(tab) {
   document.getElementById('btn-add-habit').classList.toggle('hidden', isCalendar)
 
   // Close day panel when switching away
-  if (!isCalendar && selectedDay) { selectedDay = null; closePanelUI() }
+  if (!isCalendar && state.selectedDay) { state.selectedDay = null; closePanelUI() }
 
   if (tab === 'habits') renderHabitsView(true)
 }
@@ -359,14 +238,14 @@ async function renderHabitsView(reloadFromStore = false) {
 
 function renderHabitsSummary() {
   const el = document.getElementById('habits-summary')
-  const todayKey = toDateKey(today)
+  const todayKey = toDateKey(state.today)
   const todayDone = (habitCompletions[todayKey] || []).length
   const total = habits.length
 
   // Overall completion rate (last 30 days across all habits)
   let totalSlots = 0, totalDone = 0
   for (let i = 0; i < 30; i++) {
-    const d = new Date(today); d.setDate(d.getDate() - i)
+    const d = new Date(state.today); d.setDate(d.getDate() - i)
     const key = toDateKey(d)
     for (const h of habits) {
       if (d.getTime() >= h.createdAt) {
@@ -501,7 +380,7 @@ function buildHabitTimeline(habit) {
   const createdDay = new Date(habit.createdAt); createdDay.setHours(0, 0, 0, 0)
 
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(today)
+    const d = new Date(state.today)
     d.setDate(d.getDate() - i)
     const key     = toDateKey(d)
     const done    = (habitCompletions[key] || []).includes(habit.id)
@@ -543,7 +422,7 @@ function buildDonut(pct, color) {
 // ── Streak calculations ──
 function computeCurrentStreak(habit) {
   let streak = 0
-  const d = new Date(today)
+  const d = new Date(state.today)
   // If today not done, start counting from yesterday
   const todayKey = toDateKey(d)
   const todayDone = (habitCompletions[todayKey] || []).includes(habit.id)
@@ -642,13 +521,6 @@ function closeHabitModal() {
 // ============================================================
 // Utilities
 // ============================================================
-function toDateKey(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
 function checkmarkSVG() {
   return `<svg width="10" height="8" viewBox="0 0 10 8" fill="none">
     <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -659,6 +531,101 @@ function trashSVG() {
   return `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
     <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M4.5 3.5l.5 6.5h3l.5-6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`
+}
+
+// ============================================================
+// Day Launch Popup
+// ============================================================
+async function checkDayLaunch() {
+  const todayKey = toDateKey(state.today)
+  const lastLaunch = await window.todoAPI.getLastLaunchDate()
+  await window.todoAPI.setLastLaunchDate(todayKey)
+
+  // First ever launch, or already launched today — skip
+  if (!lastLaunch || lastLaunch === todayKey) return
+  if (habits.length === 0) return
+
+  const yesterday = new Date(state.today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayKey = toDateKey(yesterday)
+
+  const yesterdayDone = habitCompletions[yesterdayKey] || []
+  const missedHabits = habits.filter(h => !yesterdayDone.includes(h.id))
+  if (missedHabits.length === 0) return
+
+  showDayLaunchModal(yesterdayKey, missedHabits)
+}
+
+function showDayLaunchModal(yesterdayKey, missedHabits) {
+  const count = missedHabits.length
+  document.getElementById('day-launch-subtitle').textContent =
+    `${count} habit${count === 1 ? '' : 's'} weren't checked yesterday. Still count them?`
+
+  const listEl = document.getElementById('day-launch-habits')
+  listEl.innerHTML = ''
+
+  for (const habit of missedHabits) {
+    const item = document.createElement('div')
+    item.className = 'dl-habit-item'
+
+    const check = document.createElement('div')
+    check.className = 'dl-habit-check'
+    check.style.borderColor = habit.color
+
+    const lbl = document.createElement('span')
+    lbl.className = 'dl-habit-label'
+    lbl.textContent = habit.name
+
+    item.append(check, lbl)
+    item.addEventListener('click', async () => {
+      const isDone = item.classList.contains('dl-habit-item--done')
+      const updated = await window.todoAPI.toggleHabitCompletion(yesterdayKey, habit.id)
+      habitCompletions[yesterdayKey] = updated.length === 0 ? undefined : updated
+      if (!habitCompletions[yesterdayKey]) delete habitCompletions[yesterdayKey]
+
+      if (isDone) {
+        item.classList.remove('dl-habit-item--done')
+        check.style.backgroundColor = ''
+        check.innerHTML = ''
+      } else {
+        item.classList.add('dl-habit-item--done')
+        check.style.backgroundColor = habit.color
+        check.innerHTML = checkmarkSVG()
+      }
+    })
+
+    listEl.appendChild(item)
+  }
+
+  document.getElementById('day-launch-modal').classList.remove('hidden')
+}
+
+function closeDayLaunchModal() {
+  document.getElementById('day-launch-modal').classList.add('hidden')
+}
+
+function bindDayLaunchModal() {
+  document.getElementById('btn-day-launch-skip').addEventListener('click', closeDayLaunchModal)
+  document.getElementById('day-launch-backdrop').addEventListener('click', closeDayLaunchModal)
+  document.getElementById('btn-day-launch-open').addEventListener('click', async () => {
+    closeDayLaunchModal()
+    const yesterday = new Date(state.today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayKey = toDateKey(yesterday)
+    const yYear = yesterday.getFullYear()
+    const yMonth = yesterday.getMonth() + 1
+    if (yYear !== state.currentYear || yMonth !== state.currentMonth) {
+      state.currentYear = yYear
+      state.currentMonth = yMonth
+      await loadAndRenderCalendar()
+    }
+    openTaskPanel(yesterdayKey)
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.getElementById('day-launch-modal').classList.contains('hidden')) {
+      closeDayLaunchModal()
+    }
+  })
 }
 
 // ============================================================

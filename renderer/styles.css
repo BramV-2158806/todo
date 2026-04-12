@@ -288,6 +288,7 @@ button:focus-visible {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
+  grid-template-columns: repeat(7, 1fr);
   background: var(--color-border);
 }
 
@@ -297,11 +298,13 @@ button:focus-visible {
 .day-cell {
   background: var(--color-bg-surface);
   min-height: 90px;
+  min-width: 0;
   padding: 8px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  overflow: hidden;
   transition: background 100ms ease;
   position: relative;
 }
@@ -361,9 +364,7 @@ button:focus-visible {
   font-size: 10px;
   line-height: 1.4;
   color: var(--color-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
   padding: 1px 4px;
   border-radius: 1px;
   letter-spacing: 0.02em;
@@ -808,6 +809,112 @@ button:focus-visible {
 }
 #habits-empty p { font-size: 12px; letter-spacing: 0.04em; color: var(--color-text-muted); line-height: 1.5; }
 #habits-empty strong { color: var(--color-text-secondary); text-shadow: var(--glow-sm); }
+
+/* ============================================================
+   Day Launch Popup
+   ============================================================ */
+#day-launch-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#day-launch-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#day-launch-content {
+  position: relative;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 2px;
+  padding: 24px;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  box-shadow: 0 0 40px rgba(0, 255, 65, 0.15), 0 20px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 1;
+}
+
+#day-launch-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  text-shadow: var(--glow-sm);
+}
+
+#day-launch-subtitle {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  margin-top: -6px;
+}
+
+#day-launch-habits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dl-habit-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.dl-habit-item:hover { background: var(--color-accent-subtle); }
+
+.dl-habit-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+.dl-habit-item--done .dl-habit-check { box-shadow: 0 0 6px currentColor; }
+
+.dl-habit-label {
+  flex: 1;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+}
+.dl-habit-item--done .dl-habit-label { color: var(--color-task-done-text); text-decoration: line-through; }
+
+#btn-day-launch-skip {
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+#btn-day-launch-skip:hover { background: var(--color-accent-subtle); color: var(--color-text-secondary); }
+
+#btn-day-launch-open {
+  background: rgba(0, 255, 65, 0.12);
+  border: 1px solid var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  text-shadow: var(--glow-sm);
+}
+#btn-day-launch-open:hover { background: rgba(0, 255, 65, 0.22); box-shadow: var(--glow-sm); }
 
 /* ============================================================
    Add Habit Modal
