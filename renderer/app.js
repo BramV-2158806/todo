@@ -21,6 +21,7 @@ let currentTab   = 'calendar'
 let habits            = []   // [{ id, name, color, createdAt }]
 let habitCompletions  = {}   // { "YYYY-MM-DD": [habitId, ...] }
 let selectedHabitColor = HABIT_COLORS[0].value
+let overdueLoaded = false
 
 // ============================================================
 // Init
@@ -57,11 +58,34 @@ function bindTaskPanel() {
   })
 }
 
-export function openTaskPanel(dateKey) {
+async function ensureOverdueData() {
+  if (overdueLoaded) return
+  const todayYear = state.today.getFullYear()
+  const todayMonth = state.today.getMonth() + 1
+  for (let i = 1; i <= 3; i++) {
+    let y = todayYear
+    let m = todayMonth - i
+    while (m < 1) { m += 12; y-- }
+    const data = await window.todoAPI.getMonth(y, m)
+    Object.assign(state.overdueData, data)
+  }
+  overdueLoaded = true
+}
+
+export async function openTaskPanel(dateKey) {
   state.selectedDay = dateKey
   const d = new Date(dateKey + 'T12:00:00')
   document.getElementById('task-panel-date').textContent =
     d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+  const todayKey = toDateKey(state.today)
+  if (dateKey === todayKey) {
+    await ensureOverdueData()
+    renderOverdueTasks()
+  } else {
+    document.getElementById('overdue-section').classList.add('hidden')
+  }
+
   renderTaskPanelList(dateKey)
   renderHabitDayList(dateKey)
   document.getElementById('task-panel').classList.add('visible')
@@ -139,6 +163,98 @@ async function handleDeleteTask(dateKey, taskId) {
     if (state.monthData[dateKey].length === 0) delete state.monthData[dateKey]
   }
   renderTaskPanelList(dateKey)
+  renderCalendarGrid()
+}
+
+// ============================================================
+// Day Panel — Carry Over (past incomplete tasks)
+// ============================================================
+function renderOverdueTasks() {
+  const todayKey = toDateKey(state.today)
+  const overdueSection = document.getElementById('overdue-section')
+  const listEl = document.getElementById('overdue-list')
+  listEl.innerHTML = ''
+
+  const overdueTasks = []
+  for (const [dateKey, tasks] of Object.entries(state.monthData)) {
+    if (dateKey >= todayKey) continue
+    for (const task of tasks) {
+      if (!task.completed) overdueTasks.push({ dateKey, task })
+    }
+  }
+  for (const [dateKey, tasks] of Object.entries(state.overdueData)) {
+    if (dateKey >= todayKey) continue
+    for (const task of tasks) {
+      if (!task.completed) overdueTasks.push({ dateKey, task })
+    }
+  }
+
+  overdueTasks.sort((a, b) => b.dateKey.localeCompare(a.dateKey))
+
+  if (overdueTasks.length === 0) {
+    overdueSection.classList.add('hidden')
+    return
+  }
+  overdueSection.classList.remove('hidden')
+
+  let lastDate = null
+  for (const { dateKey, task } of overdueTasks) {
+    if (dateKey !== lastDate) {
+      const dateLabel = document.createElement('div')
+      dateLabel.className = 'overdue-date-label'
+      const d = new Date(dateKey + 'T12:00:00')
+      dateLabel.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      listEl.appendChild(dateLabel)
+      lastDate = dateKey
+    }
+    listEl.appendChild(buildOverdueTaskItem(dateKey, task))
+  }
+}
+
+function buildOverdueTaskItem(dateKey, task) {
+  const item = document.createElement('div')
+  item.className = task.completed ? 'task-item task-item--done' : 'task-item'
+
+  const cb = document.createElement('button')
+  cb.className = 'task-checkbox'
+  cb.setAttribute('role', 'checkbox')
+  cb.setAttribute('aria-checked', String(task.completed))
+  if (task.completed) cb.innerHTML = checkmarkSVG()
+  cb.addEventListener('click', () => handleToggleOverdueTask(dateKey, task.id))
+
+  const label = document.createElement('span')
+  label.className = 'task-label'
+  label.textContent = task.text
+
+  const del = document.createElement('button')
+  del.className = 'task-delete'
+  del.setAttribute('aria-label', 'Delete')
+  del.innerHTML = trashSVG()
+  del.addEventListener('click', () => handleDeleteOverdueTask(dateKey, task.id))
+
+  item.append(cb, label, del)
+  return item
+}
+
+async function handleToggleOverdueTask(dateKey, taskId) {
+  const updated = await window.todoAPI.toggleTask(dateKey, taskId)
+  const source = state.monthData[dateKey] ? state.monthData : state.overdueData
+  if (updated && source[dateKey]) {
+    const t = source[dateKey].find(t => t.id === taskId)
+    if (t) t.completed = updated.completed
+  }
+  renderOverdueTasks()
+  renderCalendarGrid()
+}
+
+async function handleDeleteOverdueTask(dateKey, taskId) {
+  await window.todoAPI.deleteTask(dateKey, taskId)
+  const source = state.monthData[dateKey] ? state.monthData : state.overdueData
+  if (source[dateKey]) {
+    source[dateKey] = source[dateKey].filter(t => t.id !== taskId)
+    if (source[dateKey].length === 0) delete source[dateKey]
+  }
+  renderOverdueTasks()
   renderCalendarGrid()
 }
 
@@ -330,6 +446,12 @@ function buildHabitCard(habit) {
   const eligibleDays = Math.max(1, daysThisMonth - Math.max(0, Math.ceil((new Date(habit.createdAt) - new Date(now.getFullYear(), now.getMonth(), 1)) / 86400000)))
   const monthRate = Math.round((doneThisMonth / eligibleDays) * 100)
 
+  // All-time completion % (since habit was created)
+  const createdDay = new Date(habit.createdAt); createdDay.setHours(0, 0, 0, 0)
+  const todayDay   = new Date(state.today);     todayDay.setHours(0, 0, 0, 0)
+  const totalEligibleDays = Math.max(1, Math.floor((todayDay - createdDay) / 86400000) + 1)
+  const globalRate = Math.round((totalDone / totalEligibleDays) * 100)
+
   const stats = document.createElement('div')
   stats.className = 'habit-stats'
   stats.innerHTML = `
@@ -358,13 +480,13 @@ function buildHabitCard(habit) {
   const footer   = document.createElement('div')
   footer.className = 'habit-footer'
 
-  const donut = buildDonut(monthRate, habit.color)
+  const donut = buildDonut(globalRate, habit.color)
 
   const text = document.createElement('div')
   text.className = 'habit-donut-text'
   text.innerHTML = `
-    <strong>${monthRate}% this month</strong>
-    <span>${doneThisMonth} of ${eligibleDays} days completed</span>
+    <strong>${globalRate}% overall</strong>
+    <span>${totalDone} of ${totalEligibleDays} days completed</span>
     ${currentStreak > 0 ? `<span>🔥 ${currentStreak} day streak</span>` : '<span>Start your streak today!</span>'}
   `
 

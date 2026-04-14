@@ -320,6 +320,18 @@ button:focus-visible {
   z-index: 1;
 }
 
+.day-cell--has-overdue::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #F5A020;
+  box-shadow: 0 0 6px rgba(245, 160, 32, 0.8);
+}
+
 .day-number {
   font-size: 11px;
   font-weight: 700;
@@ -515,6 +527,21 @@ button:focus-visible {
   flex-shrink: 0;
 }
 .task-delete:hover { background: var(--color-danger-bg); color: var(--color-danger); }
+
+/* ── Carry-over section ── */
+.panel-section-title--overdue {
+  color: #F5A020;
+  text-shadow: 0 0 6px rgba(245, 160, 32, 0.55);
+}
+
+.overdue-date-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(245, 160, 32, 0.5);
+  padding: 6px 16px 3px;
+}
 
 /* ── Add task form ── */
 #task-add-form {

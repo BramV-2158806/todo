@@ -68,12 +68,15 @@ function buildDayCell(date) {
   const cell = document.createElement('div')
   if (!date) { cell.className = 'day-cell day-cell--empty'; return cell }
 
-  const dateKey  = toDateKey(date)
-  const tasks    = state.monthData[dateKey] || []
-  const isToday  = dateKey === toDateKey(state.today)
-  const isSel    = dateKey === state.selectedDay
+  const dateKey    = toDateKey(date)
+  const tasks      = state.monthData[dateKey] || []
+  const todayKey   = toDateKey(state.today)
+  const isToday    = dateKey === todayKey
+  const isSel      = dateKey === state.selectedDay
+  const isPast     = dateKey < todayKey
+  const hasOverdue = isPast && tasks.some(t => !t.completed)
 
-  cell.className = ['day-cell', isToday ? 'day-cell--today' : '', isSel ? 'day-cell--selected' : ''].filter(Boolean).join(' ')
+  cell.className = ['day-cell', isToday ? 'day-cell--today' : '', isSel ? 'day-cell--selected' : '', hasOverdue ? 'day-cell--has-overdue' : ''].filter(Boolean).join(' ')
   cell.dataset.dateKey = dateKey
 
   // Day number

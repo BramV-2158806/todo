@@ -5,6 +5,7 @@ export const state = {
   currentMonth: today.getMonth() + 1,
   selectedDay: null,
   monthData: {},
+  overdueData: {},
   today
 }
 
